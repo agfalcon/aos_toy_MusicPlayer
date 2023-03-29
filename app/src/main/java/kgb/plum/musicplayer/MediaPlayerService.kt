@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.Icon
 import android.media.MediaPlayer
 import android.os.IBinder
@@ -13,6 +14,7 @@ import android.os.IBinder
 class MediaPlayerService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
+    private val receiver = LowBatteryReceiver()
 
     override fun onBind(intent: Intent): IBinder? {
         return null
@@ -20,6 +22,8 @@ class MediaPlayerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        initReceiver()
 
         val playIcon = Icon.createWithResource(baseContext, R.drawable.ic_baseline_play_arrow_24)
         val pauseIcon = Icon.createWithResource(baseContext, R.drawable.ic_baseline_pause_24)
@@ -94,6 +98,13 @@ class MediaPlayerService : Service() {
         startForeground(100, notification)
     }
 
+    private fun initReceiver() {
+        val filter = IntentFilter().apply{
+            addAction(Intent.ACTION_BATTERY_LOW)
+        }
+        registerReceiver(receiver, filter)
+    }
+
     private fun createNotificationChannel(){
         val channel = NotificationChannel(CHANNEL_ID, "MEDIA_PLAYER", NotificationManager.IMPORTANCE_DEFAULT)
         val notificationManager = baseContext.getSystemService(NotificationManager::class.java)
@@ -120,5 +131,15 @@ class MediaPlayerService : Service() {
         }
 
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onDestroy() {
+        mediaPlayer?.apply{
+            stop()
+            release()
+        }
+        mediaPlayer = null
+        unregisterReceiver(receiver)
+        super.onDestroy()
     }
 }
